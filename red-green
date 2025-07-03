@@ -2,116 +2,136 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Red Light Green Light Game</title>
+  <title>3D Red Light Green Light Game</title>
   <style>
-    body {
-      text-align: center;
-      font-family: 'Arial', sans-serif;
-      background: #f0f0f0;
-    }
-
-    h1 {
-      margin-top: 20px;
-    }
-
-    #light {
-      font-size: 48px;
-      font-weight: bold;
-      margin: 20px;
-    }
-
-    #player {
-      width: 50px;
-      height: 50px;
-      background: blue;
-      border-radius: 50%;
+    body { margin: 0; overflow: hidden; }
+    #overlay {
       position: absolute;
-      top: 200px;
-      left: 50px;
-      transition: left 0.3s ease;
-    }
-
-    #track {
-      position: relative;
-      width: 90%;
-      height: 100px;
-      margin: 40px auto;
-      background: #ccc;
-      border-radius: 10px;
-    }
-
-    #moveBtn {
-      padding: 15px 30px;
-      font-size: 20px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-
-    #status {
+      top: 10px;
+      left: 10px;
       font-size: 24px;
-      margin-top: 10px;
-      color: red;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
-  <h1>🦑 Squid Game: Red Light, Green Light</h1>
-  <div id="light">🟢 Green Light</div>
+<div id="overlay">🟢 Green Light</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+<script>
+  let scene = new THREE.Scene();
+  let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  let renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-  <div id="track">
-    <div id="player"></div>
-  </div>
+  const overlay = document.getElementById("overlay");
 
-  <button id="moveBtn">Move Forward</button>
-  <div id="status"></div>
+  // Lights
+  const light = new THREE.AmbientLight(0xffffff); scene.add(light);
 
-  <script>
-    const light = document.getElementById('light');
-    const player = document.getElementById('player');
-    const statusText = document.getElementById('status');
-    const moveBtn = document.getElementById('moveBtn');
+  // Ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(100, 20),
+    new THREE.MeshBasicMaterial({color: 0x228B22})
+  );
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
 
-    let currentLight = 'green';
-    let position = 50;
-    let gameOver = false;
+  // Players
+  const player1 = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 2, 1),
+    new THREE.MeshBasicMaterial({color: 0x0000ff})
+  );
+  player1.position.set(-2, 1, 0);
+  scene.add(player1);
 
-    function toggleLight() {
-      if (gameOver) return;
+  const player2 = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 2, 1),
+    new THREE.MeshBasicMaterial({color: 0xff0000})
+  );
+  player2.position.set(2, 1, 0);
+  scene.add(player2);
 
-      currentLight = currentLight === 'green' ? 'red' : 'green';
-      light.textContent = currentLight === 'green' ? '🟢 Green Light' : '🔴 Red Light';
-      light.style.color = currentLight === 'green' ? 'green' : 'red';
+  // Camera
+  camera.position.z = 15;
+  camera.position.y = 8;
+  camera.lookAt(0, 0, 0);
 
-      const time = Math.random() * 2000 + 1000;
-      setTimeout(toggleLight, time);
+  // Game state
+  let currentLight = 'green';
+  let gameOver = false;
+
+  const audio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/17/audio_33b08f3479.mp3?filename=korean-children-song-10829.mp3");
+
+  function toggleLight() {
+    if (gameOver) return;
+    currentLight = (currentLight === 'green') ? 'red' : 'green';
+    overlay.innerText = currentLight === 'green' ? "🟢 Green Light" : "🔴 Red Light";
+    overlay.style.color = currentLight === 'green' ? 'lime' : 'red';
+
+    if (currentLight === 'red') {
+      audio.pause();
+    } else {
+      audio.currentTime = 0;
+      audio.play();
     }
 
-    function movePlayer() {
-      if (gameOver) return;
+    setTimeout(toggleLight, Math.random() * 2000 + 1500);
+  }
 
-      if (currentLight === 'red') {
-        statusText.textContent = "❌ You moved on RED light. Game Over!";
-        gameOver = true;
-        moveBtn.disabled = true;
-        return;
+  let p1Moving = false, p2Moving = false;
+
+  document.addEventListener('keydown', (e) => {
+    if (gameOver) return;
+    if (e.key === 'a') p1Moving = true;
+    if (e.key === 'l') p2Moving = true;
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'a') p1Moving = false;
+    if (e.key === 'l') p2Moving = false;
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    if (!gameOver) {
+      if (p1Moving) {
+        if (currentLight === 'red') {
+          overlay.innerText = "❌ Player 1 Moved on RED! Game Over!";
+          gameOver = true;
+        } else {
+          player1.position.x += 0.05;
+        }
       }
 
-      position += 50;
-      player.style.left = position + 'px';
+      if (p2Moving) {
+        if (currentLight === 'red') {
+          overlay.innerText = "❌ Player 2 Moved on RED! Game Over!";
+          gameOver = true;
+        } else {
+          player2.position.x += 0.05;
+        }
+      }
 
-      if (position >= window.innerWidth - 100) {
-        statusText.textContent = "✅ You Win!";
+      if (player1.position.x >= 45) {
+        overlay.innerText = "🎉 Player 1 Wins!";
         gameOver = true;
-        moveBtn.disabled = true;
+      }
+      if (player2.position.x >= 45) {
+        overlay.innerText = "🎉 Player 2 Wins!";
+        gameOver = true;
       }
     }
 
-    moveBtn.addEventListener('click', movePlayer);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'ArrowRight') movePlayer();
-    });
+    renderer.render(scene, camera);
+  }
 
-    toggleLight();
-  </script>
+  toggleLight();
+  animate();
+</script>
 </body>
 </html>
